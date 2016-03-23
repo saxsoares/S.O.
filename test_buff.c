@@ -13,7 +13,7 @@ int read_commandline(char *str){
 }
 
 int read_command(char *str, char *command, char **parameters){
-	int ip = 0, i=0 , jp= 0, flag = 0;
+	int ip = 0, i=0 , jp= 0;
 
 	while(str[i] != '\n' && str[i] != '|'){
 		while( str[i] == ' ' ) i++;
@@ -47,7 +47,7 @@ int main(){
 	char *command;
 	char **parameters;
 	char *str;
-
+	
 	while(1)
 	{
 		command = (char *)calloc(MAX_PAR, sizeof (char));
@@ -60,18 +60,23 @@ int main(){
 		if(!strcasecmp("exit\n", str)) break; 	// se teclar exit, sai do shell
 		if(!strcasecmp("\n", str)) continue;	// se teclar enter, repete o laço
 
-                read_command(str, command, parameters); 
-
-		// redirecionando saida padrao
-		if( (str = index(str, '|')) ){
-			
+		while(str){	//while tem comando a executar
+                	read_command(str, command, parameters); 
+			printf("str = %scommand = %s\nparameters = %s\n", str, command, parameters[0]);
+			// redirecionando saida padrao
+			if( (str = index(str, '|')) ){
+				str++;	
+			}	
+			if(fork() != 0){
+				waitpid(-1, &status, 0);
+			}else {
+				execvp(command, parameters);
+				return 0;
+			}
 		}
-		if(fork() != 0){
-			waitpid(-1, &status, 0);
-		}else {
-			execvp(command, parameters);
-			return 0;
-		}
+		free(command);
+		free(str);
+		free(parameters);
 	}
 	return 0;
 }
