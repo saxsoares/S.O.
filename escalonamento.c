@@ -21,13 +21,13 @@ struct no_t{
 	processo_t proc;
 	struct no_t *prox;
 };
-typedef struct no_t not_t;
+typedef struct no_t no_t;
 
 
 struct fila_t{
 	no_t *inicio;
 	no_t *fim;
-	int qtd_proc:
+	int qtd_proc;
 };
 typedef struct fila_t fila_t;
 
@@ -39,7 +39,7 @@ void cria_fila(fila_t *f){
 }
 
 //CRIA NO
-no_t *cria_no(processo_t){
+no_t *cria_no(processo_t proc){
 	no_t *no = (no_t *) calloc(1, sizeof(no_t));
 	if(!no)		NULL;
 	no->proc = proc;
@@ -48,7 +48,7 @@ no_t *cria_no(processo_t){
 }
 
 // INSERCAO ORDENADA
-int insere_fila_prio(fila_t *f, processo_t *proc){
+int insere_fila_prio(fila_t *f, processo_t proc){
 	no_t *no = cria_no(proc);
 	if(!no)	return F;
 	if(f->inicio == NULL) { // FILA VAZIA 
@@ -62,7 +62,7 @@ int insere_fila_prio(fila_t *f, processo_t *proc){
 		return V;
 	}
 	if(no->proc.prio <= f->fim->proc.prio){
-		f->fim->prox = no
+		f->fim->prox = no;
 		f->fim = no;
 		return  V;
 	}
@@ -88,14 +88,14 @@ float get_quantum(unsigned int prio){
 		case 4:
 			q =  100;
 			break;
-		case 3
+		case 3:
 			q = 75;
 			break;
 		case 2:
 			q =  50;
 			break;
 		case 1:
-			q = 25
+			q = 25;
 			break;
 		default:
 			q = 10;
@@ -103,7 +103,7 @@ float get_quantum(unsigned int prio){
 	return q;
 }
 
-processo_t cria processo(unsigned short pid){
+processo_t cria_processo(unsigned short pid){
 	processo_t proc;
 	proc.pid = pid;
 	proc.prio = rand()%5;
@@ -112,10 +112,10 @@ processo_t cria processo(unsigned short pid){
         proc.estado = PRONTO;
         proc.cpu_bound = (rand()%101)/100;
         proc.io_bound = 1 - proc.cpu_bound;
-	
+	return proc;
 }
 
-void(imprime_processo, processo_t proc){
+void imprime_processo (processo_t proc){
         printf("pid: %d\n", proc.pid);
 	printf("\t prio: %d\n", proc.prio);
         printf("\t quantum: %.2f\n",proc.quantum);
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]){
 		proc = cria_processo(i);
 		insere_fila_prio(&f, proc);
 	}
-	imprime_fila(f);
+	imprime_fila(&f);
 	return 0;
 }
 
