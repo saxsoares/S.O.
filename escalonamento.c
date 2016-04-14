@@ -5,15 +5,27 @@
 #include<stdio.h>
 #define F 0
 #define V 1
+#define PROB_PREEMP 0.3
+#define PRONTO 1
+#define BLOQUEADO 2
+#define EXECUTANDO 0
+#define PROB_IO_DISPONIVEL 0.9				
+#define MIN(a,b) a<b?a:b
 
 struct processo_t{
 	unsigned short 	pid;
 	unsigned int 	prio;
-	float 		quantum;
-	float		ttotal_exec;
+	int 		quantum;
+	int		ttotal_exec;
 	unsigned short	estado;
 	float		cpu_bound;
 	float		io_bound;
+
+	int 		texec;  	// recebe tempo de execucao na cpu
+	int 		total_preemp;	// conta o total de preempcoes sofridas
+	int 		total_uso_cpu;
+	int 		total_io;
+	int 		total_tempo_cpu;// tempo corrente da cpu no momento da exec do processo
 };
 typedef struct processo_t processo_t;
 
@@ -78,9 +90,101 @@ int insere_fila_prio(fila_t *f, processo_t proc){
 	return V;
 }
 
-#define PRONTO 1
-#define BLOQUEADO 2
-#define EXECUTANDO 0
+int fila_vazia(fila_t *f){
+	if( f->inicio == NULL) return V;
+	return F;
+}
+
+// RETIRA da fila()
+int retira_fila(fila_t *f, processo_t *proc){
+	if(fila_vazia(f)) return F;
+	no_t *no = f->inicio;
+	*proc = no->proc;
+	f->inicio = f->inicio->prox;
+	if(f->inicio == NULL ) f->fim = NULL;
+	free(no);
+	return V;
+}
+
+int prob(float x){
+	float p;
+	p = ((float)(rand()%101))/100.0;
+	if(p <= x) return V;
+	return F;
+}
+
+int pega_tempo(int x){
+	return(rand()%(x+1));
+}
+
+
+int sub(int a, int b){
+	int r = a - b;
+	if(r<0) return 0;
+	return r;
+}
+
+int total_tempo_cpu = 0;
+
+// executa processo()
+void executa_processo(processo_t *proc){
+	// preempcao -> EWscalonar retira essse processo
+	// para colocar outro de maior prioridade no lugar
+	if(prob(PROB_PREEMP)){
+		proc->texec = pega_tempo(proc->quantum);
+
+		// AQUI NAO SEI QUAL A  VARIAVEl CORRETA no lugar de ttotal_tempo
+		proc->ttotal_exec = sub( proc->ttotal_exec, proc->texec);
+		proc->estado = PRONTO;
+		proc->total_preemp++;
+	}
+	else{
+		if(prob(proc->cpu_bound)){	//executa CPU
+			proc->texec = proc->quantum;
+			proc->ttotal_exec = sub( proc->ttotal_exec, proc->texec);
+			proc->estado = PRONTO;
+			proc->total_uso_cpu++;
+		}
+		else{				// faz IO
+			
+			proc->texec = pega_tempo(proc->quantum);
+			proc->ttotal_exec = sub( proc->ttotal_exec, proc->texec);
+			proc->estado = BLOQUEADO;
+			proc->total_io++;
+		}
+	}
+	total_tempo_cpu += MIN(proc->ttotal_exec, proc->texec);
+	proc->total_tempo_cpu = total_tempo_cpu;
+	imprime_processo(*proc);
+}
+
+// escalonador()
+void escalonador(fila_t *f){
+	processo_t proc;
+	while(!fila_vazia(f)){
+		bzero(&proc, sizeof(processo_t));
+		retira_fila(f, &proc);
+		switch(proc.estado){
+			case PRONTO:
+				proc.estado = EXECUTANDO;
+				executa_processo(&proc);
+				if(proc.ttotal_exec > 0)
+					insere_fila_prio(f, proc);
+				break;
+			case BLOQUEADO:
+				if(prob(PROB_IO_DISPONIVEL)){
+					proc.estado = EXECUTANDO;
+ 	                                executa_processo(&proc);
+	       	                        if(proc.ttotal_exec > 0)
+                	                        insere_fila_prio(f, proc);
+				}
+				else{
+					insere_fila_prio(f, proc);
+				}
+				break;
+		}
+	}
+}
 
 float get_quantum(unsigned int prio){
 	int q;
@@ -110,20 +214,30 @@ processo_t cria_processo(unsigned short pid){
 	proc.quantum = get_quantum(proc.prio);
 	proc.ttotal_exec = rand()%10000;
         proc.estado = PRONTO;
-        proc.cpu_bound = (rand()%101)/100;
+        proc.cpu_bound = ((float)(rand()%101))/100;
         proc.io_bound = 1 - proc.cpu_bound;
+		
 	return proc;
 }
 
+int imprime_header = F;
 void imprime_processo (processo_t proc){
-        printf("pid: %d\n", proc.pid);
-	printf("\t prio: %d\n", proc.prio);
-        printf("\t quantum: %.2f\n",proc.quantum);
-	printf("\t ttotal_exec: %.2f\n", proc.ttotal_exec);
-        printf("\t estado: %d\n",proc.estado);
-        printf("\t cpu_bound: %.2f\n",proc.cpu_bound);
-        printf("\t io_bound: %.2f\n",proc.io_bound);
-
+	if(!imprime_header){
+		printf("pid\tprio\testado\tcpu_bound\tio_bound\tttotal_exec\tquantum\ttexec\ttotal_preemp\ttotal_uso_cpu\ttotal_io\ttotal_tempo_cpu");
+		imprime_header = V
+	}
+        printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t \n", 
+		proc.pid, 
+		proc.prio,
+		proc.estado,
+		proc.cpu_bound,
+		proc.io_bound, 
+		proc.ttotal_exec,
+		proc.quantum,
+		proc.texec,
+		proc.total_preemp, 
+		proc.total_uso_cpu,
+		proc.total_io);
 }
 
 void imprime_fila(fila_t *f){
@@ -133,16 +247,27 @@ void imprime_fila(fila_t *f){
 	}
 }
 
-int main(int argc, char *argv[]){
+void cria_todos_processos(fila_t *f, int np){
 	int i;
 	processo_t proc;
-	fila_t f;
-	cria_fila(&f);
 	for(i=0; i<10; i++){
 		proc = cria_processo(i);
-		insere_fila_prio(&f, proc);
+		insere_fila_prio(f, proc);
 	}
-	imprime_fila(&f);
+}
+
+int main(int argc, char *argv[]){
+	if(argc != 2) {
+		printf("uso: %s <num_proc>\n", argv[0]);
+		return 0;
+	}
+	int np;
+	fila_t f;
+	np = atoi(argv[1]);
+	cria_fila(&f);
+	cria_todos_processos(np);
+	escalonador();
+//	imprime_fila(&f);
 	return 0;
 }
 
