@@ -124,6 +124,26 @@ int sub(int a, int b){
 	return r;
 }
 
+int imprime_header = F;
+void imprime_processo (processo_t proc){
+	if(!imprime_header){
+		printf("pid\tprio\testado\tcpu_bound\tio_bound\tttotal_exec\tquantum\ttexec\ttotal_preemp\ttotal_uso_cpu\ttotal_io\ttotal_tempo_cpu");
+		imprime_header = V;
+	}
+        printf("%d  %d  %d  %.2f   %.2f   %d  %d  %d  %d  %d  %d\n", 
+		proc.pid, 
+		proc.prio,
+		proc.estado,
+		proc.cpu_bound,
+		proc.io_bound, 
+		proc.ttotal_exec,
+		proc.quantum,
+		proc.texec,
+		proc.total_preemp, 
+		proc.total_uso_cpu,
+		proc.total_io);
+}
+
 int total_tempo_cpu = 0;
 
 // executa processo()
@@ -220,25 +240,6 @@ processo_t cria_processo(unsigned short pid){
 	return proc;
 }
 
-int imprime_header = F;
-void imprime_processo (processo_t proc){
-	if(!imprime_header){
-		printf("pid\tprio\testado\tcpu_bound\tio_bound\tttotal_exec\tquantum\ttexec\ttotal_preemp\ttotal_uso_cpu\ttotal_io\ttotal_tempo_cpu");
-		imprime_header = V
-	}
-        printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t \n", 
-		proc.pid, 
-		proc.prio,
-		proc.estado,
-		proc.cpu_bound,
-		proc.io_bound, 
-		proc.ttotal_exec,
-		proc.quantum,
-		proc.texec,
-		proc.total_preemp, 
-		proc.total_uso_cpu,
-		proc.total_io);
-}
 
 void imprime_fila(fila_t *f){
 	no_t *i;
@@ -265,8 +266,8 @@ int main(int argc, char *argv[]){
 	fila_t f;
 	np = atoi(argv[1]);
 	cria_fila(&f);
-	cria_todos_processos(np);
-	escalonador();
+	cria_todos_processos(&f, np);
+	escalonador(&f);
 //	imprime_fila(&f);
 	return 0;
 }
