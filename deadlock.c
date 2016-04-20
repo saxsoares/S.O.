@@ -2,7 +2,7 @@
 #include<stdlib.h>
 #include<semaphore.h>
 #include<pthread.h>
-
+#include<unistd.h>
 
 int arquivo = 0;
 int impressora = 0;
@@ -20,6 +20,7 @@ void *processo_a(void *args){
 		sem_wait(&mutex_arq);
 		printf("A: sem_wait(&mute_imp): %d\n", impressora);
 		sem_wait(&mutex_imp);
+		sleep(1);
 		usa_recurso(&arquivo);
 		usa_recurso(&impressora);
 		sem_post(&mutex_imp);
@@ -33,6 +34,7 @@ void *processo_b(void *args){
 		sem_wait(&mutex_imp);
 		printf("B: sem_wait(&mute_arq): %d\n", arquivo);
 		sem_wait(&mutex_arq);
+		sleep(1);
 		usa_recurso(&arquivo);
 		usa_recurso(&impressora);
 		sem_post(&mutex_arq);
